@@ -1,0 +1,12 @@
+README.md
+setup.py
+src/multimodal_integration.egg-info/PKG-INFO
+src/multimodal_integration.egg-info/SOURCES.txt
+src/multimodal_integration.egg-info/dependency_links.txt
+src/multimodal_integration.egg-info/top_level.txt
+tests/test_modality_weighting.py
+tests/test_model_hooks.py
+tests/test_representational_alignment.py
+tests/test_spatial_congruence.py
+tests/test_superadditivity.py
+tests/test_temporal_congruence.py
