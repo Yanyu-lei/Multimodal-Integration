@@ -2,14 +2,14 @@
 Simple image / text perturbations reused by every spoke.
 Keep PIL inputs & outputs so everything stays lightweight.
 """
-from PIL import Image, ImageOps
+from PIL import Image, ImageChops
 import numpy as np
 import random
 
 # ---------- Spatial helpers ----------
 def shift_image(img: Image.Image, dx: int, dy: int) -> Image.Image:
     """Return a copy of img shifted by (dx, dy) pixels."""
-    return ImageOps.offset(img, dx, dy)
+    return ImageChops.offset(img, dx, dy)
 
 # ---------- Vision noise helpers ----------
 def add_gaussian_noise(img: Image.Image, sigma: float = 25.0) -> Image.Image:
