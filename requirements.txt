@@ -1,7 +1,7 @@
-torch==2.7.0          # CPU build is fine
-torchvision==0.22.0
-transformers==4.51.3
-tqdm==4.67.1
-pillow==11.2.1
-numpy==2.2.5
-pytest==8.3.5
+torch==2.7.0               # CPU build; upgrade to a CUDA build if you have GPUs
+torchvision==0.22.0        # matching torchvision for image transforms
+transformers==4.51.3       # CLIPModel/CLIPProcessor support
+tqdm==4.67.1               # progress bars
+pillow==11.2.1             # image I/O
+numpy==2.2.5               # array ops (stimuli/tests)
+pytest==8.3.5              # unit testing
