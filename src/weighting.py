@@ -1,27 +1,50 @@
 # src/weighting.py
 
-def vision_reliability(psnr: float) -> float:
-    return psnr
+import numpy as np
+from typing import Iterator, Tuple
+
+def vision_reliability(psnr: float, max_psnr: float = 50.0) -> float:
+    """
+    Convert a PSNR value (in dB) into a reliability in [0,1].
+    We assume linear mapping: R = min(psnr / max_psnr, 1.0).
+    """
+    return float(np.clip(psnr / max_psnr, 0.0, 1.0))
 
 def text_reliability(entropy: float) -> float:
-    return 1.0 - entropy
+    """
+    Convert a text‐shuffle “entropy” in [0,1] into reliability R_text = 1 - entropy.
+    """
+    return float(np.clip(1.0 - entropy, 0.0, 1.0))
 
-def compute_I(R_v: float, R_t: float) -> tuple[float, float]:
-    total = R_v + R_t
-    if total == 0:
+def compute_I(Rv: float, Rt: float) -> Tuple[float, float]:
+    """
+    Bayesian ideal weights:
+      I_v = Rv / (Rv + Rt)
+      I_t = Rt / (Rv + Rt)
+    If both Rv=Rt=0, split evenly.
+    """
+    total = Rv + Rt
+    if total <= 0:
         return 0.5, 0.5
-    return (R_v / total, 1.0 - R_v / total)
+    return Rv / total, Rt / total
 
-class VisionPSNRPerturbation:
-    def __init__(self, psnr_levels: list[float]):
-        self.psnr = psnr_levels[0]
+def psnr_to_sigma(psnr: float, max_pixel: float = 255.0) -> float:
+    """
+    Convert PSNR (dB) → Gaussian‐noise σ via
+      σ = max_pixel / sqrt(10^(PSNR/10)).
+    Higher PSNR → lower σ.
+    """
+    return float(max_pixel / np.sqrt(10 ** (psnr / 10)))
 
-    def __call__(self, sample: dict):
-        return sample, {"vision": vision_reliability(self.psnr), "text": 1.0}
-
-class TextEntropyPerturbation:
-    def __init__(self, entropy_levels: list[float]):
-        self.entropy = entropy_levels[0]
-
-    def __call__(self, sample: dict):
-        return sample, {"vision": 1.0, "text": text_reliability(self.entropy)}
+def noise_sweep(
+    psnr_levels: np.ndarray = np.linspace(0, 50, 6),
+    entropy_levels: np.ndarray = np.linspace(0, 1, 6)
+) -> Iterator[Tuple[float, float]]:
+    """
+    Yield all combinations of (Rv, Rt) from the given PSNR & entropy grids.
+    """
+    for psnr in psnr_levels:
+        Rv = vision_reliability(psnr)
+        for ent in entropy_levels:
+            Rt = text_reliability(ent)
+            yield Rv, Rt

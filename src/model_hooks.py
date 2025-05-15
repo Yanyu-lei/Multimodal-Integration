@@ -1,94 +1,86 @@
 """
 src/model_hooks.py
 
-Tiny wrapper around CLIP that plants forward-hooks for all five spokes:
-1. spatial congruence
-2. temporal congruence (via cls_emb proxy)
-3. modality weighting
-4. superadditivity (raw embeddings)
-5. representational alignment
+Direct CLIP embedding extractor for all five spokes, without forward hooks.
+Provides:
+  - img_emb: (B, D) image embeddings
+  - txt_emb: (B, D) text embeddings
+  - joint_emb: (B, D) sum of image+text embeddings
+  - cls_emb: (B, D) alias for image embeddings (temporal)
+  - spatial: (B, P, D) patch embeddings (last vision layer, excluding CLS)
+  - weighting: (B, 2) normalized image vs text embedding norm ratio
+  - representational_alignment: (B,) sigmoid of CLIP logits_per_image diagonal
 """
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 import torch
 from transformers import CLIPModel, CLIPProcessor
 from PIL import Image
 
-
 class ModelHooks:
-    def __init__(self, device: str = "cuda"):
+    def __init__(self, device: str = "cpu"):
         self.device = device
-        # 1. Load CLIP
-        self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32") \
-                             .to(device).eval()
-        self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-        # 2. Container for hook outputs
-        self._records: Dict[str, Any] = {}
-        # 3. Register all hooks
-        self._register_hooks()
-
-    def _register_hooks(self):
-        # --- Spatial congruence: CLS→patch attention --- #
-        def save_spatial(module, inp, out):
-            # out = (attn_output, attn_weights)
-            attn_weights = out[1]  # (B, heads, Q, K)
-            cls_to_patch = attn_weights[:, :, 0, 1:].mean(dim=1)  # (B, num_patches)
-            self._records["spatial"] = cls_to_patch.detach().cpu()
-
-        last_attn = self.model.vision_model.encoder.layers[-1].self_attn
-        last_attn.register_forward_hook(save_spatial)
-
-        # --- Representational alignment: cosine(img, text) --- #
-        def save_alignment(module, inp, out):
-            # out: CLIPOutput with image_embeds & text_embeds
-            img_e, txt_e = out.image_embeds, out.text_embeds
-            cos = torch.nn.functional.cosine_similarity(img_e, txt_e, dim=-1)
-            self._records["representational_alignment"] = cos.detach().cpu()
-
-        self.model.register_forward_hook(save_alignment)
-
-        # --- Modality weighting: ||img|| vs ||txt|| ---------------- #
-        def save_weighting(module, inp, out):
-            img_e, txt_e = out.image_embeds, out.text_embeds
-            w_img = img_e.norm(dim=-1, keepdim=True)
-            w_txt = txt_e.norm(dim=-1, keepdim=True)
-            total = w_img + w_txt + 1e-8
-            weights = torch.cat([w_img/total, w_txt/total], dim=1)
-            self._records["weighting"] = weights.detach().cpu()
-
-        self.model.register_forward_hook(save_weighting)
-
-        # --- Superadditivity: capture raw embeddings ------------- #
-        def save_embs(module, inp, out):
-            self._records["img_emb"]   = out.image_embeds.detach().cpu()
-            self._records["txt_emb"]   = out.text_embeds.detach().cpu()
-            self._records["joint_emb"] = (out.image_embeds + out.text_embeds).detach().cpu()
-
-        self.model.register_forward_hook(save_embs)
-
-        # --- Temporal proxy: capture CLS embedding --------------- #
-        def save_cls(module, inp, out):
-            self._records["cls_emb"] = out.image_embeds.detach().cpu()
-
-        self.model.register_forward_hook(save_cls)
+        # Load pretrained CLIP model and processor
+        self.model = CLIPModel.from_pretrained(
+            "openai/clip-vit-base-patch32"
+        ).to(device).eval()
+        self.processor = CLIPProcessor.from_pretrained(
+            "openai/clip-vit-base-patch32"
+        )
 
     @torch.no_grad()
-    def forward(self, image: Image.Image, text: str) -> Dict[str, Any]:
-        """
-        Run a single CLIP forward pass on image+text.
-        Hooks populate:
-          spatial, representational_alignment,
-          weighting, img_emb, txt_emb, joint_emb, cls_emb
-        """
+    def forward(
+        self,
+        image: Union[Image.Image, List[Image.Image]],
+        text: Union[str, List[str]]
+    ) -> Dict[str, Any]:
+        # Batch inputs
+        imgs = image if isinstance(image, list) else [image]
+        txts = text  if isinstance(text, list)  else [text]
+        # Preprocess
         inputs = self.processor(
-            images=[image],
-            text=[text],
+            images=imgs,
+            text=txts,
             return_tensors="pt",
             padding=True
         ).to(self.device)
 
-        # Ask for attentions so spatial hook fires
-        _ = self.model(**inputs, output_attentions=True)
+        # Forward with hidden states
+        outputs = self.model(
+            **inputs,
+            output_hidden_states=True,
+            output_attentions=False
+        )
 
-        out = self._records.copy()
-        self._records.clear()
-        return out
+        # Basic embeddings
+        img_emb = outputs.image_embeds      # (B, D)
+        txt_emb = outputs.text_embeds       # (B, D)
+        joint_emb = img_emb + txt_emb       # (B, D)
+        cls_emb = img_emb                   # (B, D)
+
+        # Spatial: patch embeddings from final vision layer
+        vis_hid = outputs.vision_model_output.hidden_states[-1]  # (B, seq_len, D)
+        spatial = vis_hid[:, 1:, :].cpu()                        # drop CLS token
+
+        # Modality weighting: image vs text norm ratio
+        iv = img_emb.norm(dim=-1, keepdim=True)
+        it = txt_emb.norm(dim=-1, keepdim=True)
+        total = iv + it + 1e-8
+        weighting = torch.cat([iv/total, it/total], dim=-1).cpu()
+
+        # Representational alignment: sigmoid of logits_per_image diagonal
+        sim = outputs.logits_per_image
+        if sim.ndim == 2 and sim.size(0) == sim.size(1):
+            diag = torch.diagonal(sim)
+        else:
+            diag = sim.view(-1)
+        representational_alignment = torch.sigmoid(diag).cpu()
+
+        return {
+            "img_emb": img_emb.cpu(),
+            "txt_emb": txt_emb.cpu(),
+            "joint_emb": joint_emb.cpu(),
+            "cls_emb": cls_emb.cpu(),
+            "spatial": spatial,
+            "weighting": weighting,
+            "representational_alignment": representational_alignment,
+        }
