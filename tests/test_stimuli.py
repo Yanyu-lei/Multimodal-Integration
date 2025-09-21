@@ -1,67 +1,59 @@
+# tests/test_stimuli.py
 """
-tests/test_stimuli.py
+Tests for stimulus helpers (image/text) and reliability mapping.
 
-Unit tests for src/stimuli.py helpers.
+We check:
+• Gaussian noise preserves shape/bounds.
+• `prepare_image` returns an Rv in [0,1] and is monotonic with 'sigma'.
+• Masking increases CE; reliability mapping is monotonic.
+• (Optional) COCO streaming smoke test (skipped in CI).
 """
 import numpy as np
-from PIL import Image
 import pytest
-
+from PIL import Image
 from src.stimuli import (
-    shift_image,
+    load_coco_streaming,
     add_gaussian_noise,
-    shuffle_words,
-    make_shifted_video,
+    prepare_image,
+    prepare_text,
+    mask_ids,
+    ce_loss,
+    text_reliability,
 )
 
 
-def test_shift_image_moves_pixel():
-    img = Image.new("RGB", (32, 32), "black")
-    img.putpixel((10, 10), (255, 0, 0))
-    shifted = shift_image(img, dx=4, dy=0)
-
-    # Pixel should move from (10,10) to (14,10)
-    assert shifted.getpixel((14, 10)) == (255, 0, 0)
-    # Original spot should now be black
-    assert shifted.getpixel((10, 10)) == (0, 0, 0)
+def test_add_gaussian_noise_shape_bounds():
+    arr = np.zeros((10, 10, 3), dtype=np.uint8)
+    noisy = add_gaussian_noise(arr, sigma=5.0)
+    assert noisy.shape == arr.shape
+    assert noisy.dtype == np.uint8
+    assert noisy.min() >= 0 and noisy.max() <= 255
 
 
-def test_add_gaussian_noise_changes_values_but_not_shape():
-    img = Image.new("L", (8, 8), 128)  # gray
-    noisy = add_gaussian_noise(img, sigma=25.0)
-
-    # Mode and size preserved
-    assert noisy.mode == img.mode
-    assert noisy.size == img.size
-    # At least one pixel changed
-    assert np.any(np.array(noisy) != np.array(img))
+def test_prepare_image_returns_rv_in_0_1():
+    img = Image.new("RGB", (8, 8), "white")
+    rv0 = prepare_image(img, sigma=0.0)[2]
+    rv1 = prepare_image(img, sigma=20.0)[2]
+    assert 0.0 <= rv0 <= 1.0 and 0.0 <= rv1 <= 1.0
+    assert rv0 >= rv1  # more corruption → lower Rv
 
 
-def test_shuffle_words_preserves_and_mixes():
-    text = "the quick brown fox"
-    shuffled = shuffle_words(text)
+def test_mask_ids_and_ce_loss_monotonic():
+    ids_clean, ce_clean, ce_rand = prepare_text("a small red car on the street")
+    ids_lo = mask_ids(ids_clean, 0.1)
+    ids_hi = mask_ids(ids_clean, 0.9)
+    ce_lo = ce_loss(ids_lo)
+    ce_hi = ce_loss(ids_hi)
+    assert ce_lo <= ce_hi
+    rt_lo = text_reliability(ce_clean, ce_lo, ce_rand)
+    rt_hi = text_reliability(ce_clean, ce_hi, ce_rand)
+    assert 0.0 <= rt_hi <= rt_lo <= 1.0
 
-    # Same multiset of words
-    assert sorted(shuffled.split()) == sorted(text.split())
-    # Should still have four words
-    assert len(shuffled.split()) == 4
 
-
-def test_make_shifted_video_length_and_shift():
-    img = Image.new("RGB", (16, 16), "black")
-    img.putpixel((0, 0), (255, 0, 0))
-
-    frames = make_shifted_video(img, num_frames=5, max_shift=8, axis="x")
-
-    # 1. Five frames
-    assert isinstance(frames, list)
-    assert len(frames) == 5
-
-    # 2. First frame unshifted
-    assert frames[0].getpixel((0, 0)) == (255, 0, 0)
-
-    # 3. Last frame shifted by max_shift=8
-    assert frames[-1].getpixel((8, 0)) == (255, 0, 0)
-
-    # 4. Middle frame ~half shift
-    assert frames[2].getpixel((4, 0)) == (255, 0, 0)
+@pytest.mark.skip(reason="dataset may not be present in CI")
+def test_load_coco_streaming_returns_pairs():
+    pairs = list(load_coco_streaming(sample_size=1))
+    assert len(pairs) == 1
+    img, cap = pairs[0]
+    assert hasattr(img, "size") or isinstance(img, str)
+    assert isinstance(cap, str) and cap.strip()

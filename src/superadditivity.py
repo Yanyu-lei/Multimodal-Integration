@@ -1,30 +1,19 @@
 # src/superadditivity.py
+# =============================================================================
+# Superadditivity / inverse effectiveness (ideal)
+# =============================================================================
+# Responsibilities
+#   • Provide the divisive‑normalisation style ideal:
+#         I_joint = Rv + Rt − Rv*Rt  (clipped to [0,1])
+#   • The evaluator computes S_joint from embedding norms and compares to this.
+# =============================================================================
 
-DEFAULT_K = 1.0
-EPS = 1e-6
+from __future__ import annotations
 
-def compute_R(R_v: float, R_t: float) -> float:
-    """
-    Reliability = min of the two unimodal reliabilities.
-    """
-    return min(R_v, R_t)
 
-def compute_I(R_v: float, R_t: float, k: float = DEFAULT_K, eps: float = EPS) -> float:
+def compute_I(Rv: float, Rt: float) -> float:
     """
-    Ideal (inverse‐effectiveness): I = k / (R + eps).
+    Divisive‑normalisation style ideal for joint reliability.
     """
-    R = compute_R(R_v, R_t)
-    return k / (R + eps)
-
-class SuperadditivityPerturbation:
-    """
-    Simulates combined cue reliability by directly specifying (R_v, R_t).
-    Returns (sample, {'superadditivity': R}).
-    """
-    def __init__(self, levels: list[tuple[float, float]]):
-        # levels is a list of one (R_v, R_t) pair
-        self.R_v, self.R_t = levels[0]
-
-    def __call__(self, sample: dict):
-        R = compute_R(self.R_v, self.R_t)
-        return sample, {"superadditivity": R}
+    ideal = Rv + Rt - (Rv * Rt)
+    return float(min(max(ideal, 0.0), 1.0))

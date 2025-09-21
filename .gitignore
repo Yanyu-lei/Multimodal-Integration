@@ -1,6 +1,44 @@
-.venv/
+# --- Python bytecode / caches ---
 __pycache__/
-*.pyc
-.DS_Store
-*.egg-info/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
 .pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Packaging / builds ---
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+.env
+*.env
+
+# --- IDE / OS clutter ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Project artifacts (generated) ---
+runs/
+*.log
+manifest.json
+
+# --- HF / dataset caches (local-only) ---
+.cache/
+.huggingface/
+hf_cache/
+datasets/
+
+# --- Jupyter (if any) ---
+.ipynb_checkpoints/

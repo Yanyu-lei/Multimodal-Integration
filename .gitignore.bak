@@ -1,0 +1,55 @@
+# ---------------------------
+# Python / Packaging
+# ---------------------------
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+build/
+dist/
+
+# Virtual environments & env files
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Test & tooling caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Generated data & run artifacts
+figures/
+runs/
+logs/
+tmp/
+results*.csv
+metrics.csv
+
+# Caches (local-only convenience)
+.cache/
+.huggingface/
+hf_cache/
+datasets/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Large model files (if any)
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Manifest: we KEEP this tracked for reproducible stimuli.
+# If you prefer to regenerate instead of tracking it, uncomment the next line.
+# manifest.json

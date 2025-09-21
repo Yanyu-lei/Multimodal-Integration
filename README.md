@@ -1,45 +1,65 @@
-# Multimodal-Integration • Test Harness (v0.1)
+# Multimodal-Integration
 
-A lightweight, fully-reproducible framework for **evaluating how well
-multimodal AI models integrate information** across five neuroscience-inspired
-dimensions (spokes):
+Evaluate **how a multimodal model (CLIP)** combines image + text by turning four neuroscience‑inspired behaviors into **measurable spokes**:
 
-1. **Spatial congruence**
-2. **Temporal congruence** (proxy via embedding stability)
-3. **Modality weighting**
-4. **Superadditivity**
-5. **Representational alignment**
+1. **Image fidelity (A)** — how much of the image signal remains as we corrupt it.  
+2. **Modality weighting (B)** — do internal weights shift toward the more reliable cue?  
+3. **Superadditivity (C, inverse effectiveness)** — is the joint response more/less than expected from the parts?  
+4. **Representational alignment (D)** — do *matched* image–text pairs stay more similar than mismatched ones as cues weaken?
 
-The end goal is a radar chart that visualises model generality.  We provide:
-
-* Self-contained spoke modules (`src/spatial.py`, …)
-* Stimulus builders (`src/stimuli.py`)
-* Instrumented model hooks (`src/model_hooks.py`)  
-  – capture **all five** spoke signals  
-* **21 passing unit tests** covering every spoke + stimulus layer
-* Editable Python package (`pip install -e .`) for rapid iteration
+All spokes share a common reliability scale `R ∈ [0,1]`:  
+- **Vision reliability `Rv`** is measured from **PSNR** of the disturbed image (PSNR/50, clipped).  
+- **Text reliability `Rt`** is measured from **GPT‑2 cross‑entropy**, rescaled between clean and random.  
+The “ideals” and the concrete measurements live in `src/*.py`.
 
 ---
 
-## Quick-start (CPU-only)
+## Repository map
+
+- **Orchestrator / CLI** — `src/integration_evaluator.py`  
+  Runs the full pipeline end‑to‑end, writes one tidy CSV, supports A/B/C presets, seeds, offsets, and a manifest builder. (CSV column set is fixed.) :contentReference[oaicite:8]{index=8}
+
+- **Stimuli + reliability** — `src/stimuli.py`  
+  Deterministic COCO streaming with a **manifest.json** for exact replay; image corruption (gaussian/blur/cutout) and **measured** `Rv` via PSNR; text corruption (mask/shuffle/replace) and `Rt` via CE mapping. :contentReference[oaicite:9]{index=9}
+
+- **Spokes (math + measurement)**  
+  - Image fidelity: `src/image_fidelity.py` (PSNR + identity ideal) :contentReference[oaicite:10]{index=10}  
+  - Weighting: `src/weighting.py` (Iv,It from Rv,Rt) :contentReference[oaicite:11]{index=11}  
+  - Superadditivity: `src/superadditivity.py` (I = Rv + Rt − Rv·Rt) :contentReference[oaicite:12]{index=12}  
+  - Alignment: `src/repr_align.py` (I_align = min(Rv,Rt)) :contentReference[oaicite:13]{index=13}
+
+- **Model interface** — `src/model_hooks.py`  
+  Loads CLIP ViT‑B/32, returns: weighting (pre‑norm projection norms), multi‑depth patch grids (image fidelity), pooled embeddings (joint/align). :contentReference[oaicite:14]{index=14}
+
+- **Figures + metrics** — `src/plots/*.py`, orchestrated by `src/plots/make_all_figures.py`  
+  Produces F1–F4 PDFs and `metrics.csv` (slope/intercept/Spearman/boost prevalence), with optional faceting by run tag or seed. :contentReference[oaicite:15]{index=15}
+
+- **Runner scripts** — `scripts/make_all.sh`, `scripts/run_full_abc3.py`  
+  One‑liner wrapper for tests → runs → figures; multi‑seed helper. Saved artifacts go under `runs/<timestamp>/`. :contentReference[oaicite:16]{index=16} :contentReference[oaicite:17]{index=17}
+
+- **Tests** — `tests/*.py`  
+  Cover stimuli invariants and monotonicity, PSNR/identity, weighting sum‑to‑one, alignment identities, hook outputs. :contentReference[oaicite:18]{index=18} :contentReference[oaicite:19]{index=19} :contentReference[oaicite:20]{index=20} :contentReference[oaicite:21]{index=21} :contentReference[oaicite:22]{index=22} :contentReference[oaicite:23]{index=23}
+
+---
+
+## Quick start
+
+> Works on CPU; GPU just accelerates CLIP/GPT‑2.
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/Yanyu-lei/Multimodal-Integration.git
-cd Multimodal-Integration
-
-# 2. Create & activate a virtual-env
+# 1) Create and activate a virtual environment (reviewers make their own)
 python -m venv .venv
 source .venv/bin/activate   # Windows: .\.venv\Scripts\activate
 
-# 3. Install runtime deps
+# 2) Install PyTorch for your system (see pytorch.org for CUDA wheels)
+pip install "torch>=2.2,<3" "torchvision>=0.17,<1"
+
+# 3) Install the rest (and the package itself)
 pip install -r requirements.txt
 pip install -e .
 
-# 4. Run all unit tests  (21 should pass)
-pytest -q
+# 4) One-liner (quick): tests → ABC (single seed) → F1–F4 + metrics
+scripts/make_all.sh quick 120
 
-# 5. Run the evaluator end-to-end
-python -m src.integration_evaluator
-
-# 6. (Coming soon) Plot the radar chart
+# 5) Full ABC (3 seeds): runs → appends to one CSV → per-tag + overall figures
+scripts/make_all.sh full 300
