@@ -1,3 +1,5 @@
+[![CI](https://github.com/Yanyu-lei/Multimodal-Integration/actions/workflows/ci.yml/badge.svg)](https://github.com/Yanyu-lei/Multimodal-Integration/actions/workflows/ci.yml)
+
 # Multimodal-Integration
 
 Evaluate **how a multimodal model (CLIP)** combines image + text by turning four neuroscience‑inspired behaviors into **measurable spokes**:
@@ -64,6 +66,11 @@ scripts/make_all.sh quick 120
 # 5) Full ABC (3 seeds): runs → appends to one CSV → per-tag + overall figures
 scripts/make_all.sh full 300
 ```
+
+### Reproducibility at a glance
+- **Determinism.** We fix seeds (11051, 22103, 33259) and replay the exact COCO bytes/order via `manifest.json`.  
+- **Rebuild-only path.** All PDFs + `metrics.csv` can be regenerated from a single `results.csv` (no model rerun).  
+- **Provenance.** Each PDF footer embeds `sha256(results.csv)` so anyone can verify it came from the same CSV.
 
 
 ## Rebuild only the figures from an existing CSV
