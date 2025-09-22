@@ -74,6 +74,10 @@ scripts/make_all.sh full 300
 
 
 ## Rebuild only the figures from an existing CSV
+You can also pass `results.csv.gz` directly; pandas handles gzip transparently. Tested on Python 3.10.
+
+**Reproducible artifact:** [v0.1.0 — Reproducible Figures & CSV](https://github.com/Yanyu-lei/Multimodal-Integration/releases/tag/v0.1.0)
+
 ```bash
 python -m src.plots.make_all_figures \
   --results runs/<timestamp>/results.csv \
