@@ -63,3 +63,16 @@ scripts/make_all.sh quick 120
 
 # 5) Full ABC (3 seeds): runs → appends to one CSV → per-tag + overall figures
 scripts/make_all.sh full 300
+```
+
+
+## Rebuild only the figures from an existing CSV
+```bash
+python -m src.plots.make_all_figures \
+  --results runs/<timestamp>/results.csv \
+  --out-dir runs/<timestamp>/figures \
+  --facet run_tag \
+  --save-metrics
+```
+
+# Note: 95% bootstrap CIs are on by default; add --no-ci to disable for speed. 
