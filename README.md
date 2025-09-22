@@ -75,4 +75,4 @@ python -m src.plots.make_all_figures \
   --save-metrics
 ```
 
-# Note: 95% bootstrap CIs are on by default; add --no-ci to disable for speed. 
+**Note:** 95% bootstrap CIs are on by default; add `--no-ci` to disable for speed.
