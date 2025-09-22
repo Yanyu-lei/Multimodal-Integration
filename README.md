@@ -17,28 +17,28 @@ The “ideals” and the concrete measurements live in `src/*.py`.
 ## Repository map
 
 - **Orchestrator / CLI** — `src/integration_evaluator.py`  
-  Runs the full pipeline end‑to‑end, writes one tidy CSV, supports A/B/C presets, seeds, offsets, and a manifest builder. (CSV column set is fixed.) :contentReference[oaicite:8]{index=8}
+  Runs the full pipeline end‑to‑end, writes one tidy CSV, supports A/B/C presets, seeds, offsets, and a manifest builder. (CSV column set is fixed.)
 
 - **Stimuli + reliability** — `src/stimuli.py`  
-  Deterministic COCO streaming with a **manifest.json** for exact replay; image corruption (gaussian/blur/cutout) and **measured** `Rv` via PSNR; text corruption (mask/shuffle/replace) and `Rt` via CE mapping. :contentReference[oaicite:9]{index=9}
+  Deterministic COCO streaming with a **manifest.json** for exact replay; image corruption (gaussian/blur/cutout) and **measured** `Rv` via PSNR; text corruption (mask/shuffle/replace) and `Rt` via CE mapping.
 
 - **Spokes (math + measurement)**  
-  - Image fidelity: `src/image_fidelity.py` (PSNR + identity ideal) :contentReference[oaicite:10]{index=10}  
-  - Weighting: `src/weighting.py` (Iv,It from Rv,Rt) :contentReference[oaicite:11]{index=11}  
-  - Superadditivity: `src/superadditivity.py` (I = Rv + Rt − Rv·Rt) :contentReference[oaicite:12]{index=12}  
-  - Alignment: `src/repr_align.py` (I_align = min(Rv,Rt)) :contentReference[oaicite:13]{index=13}
+  - Image fidelity: `src/image_fidelity.py` (PSNR + identity ideal)  
+  - Weighting: `src/weighting.py` (Iv,It from Rv,Rt)  
+  - Superadditivity: `src/superadditivity.py` (I = Rv + Rt − Rv·Rt)  
+  - Alignment: `src/repr_align.py` (I_align = min(Rv,Rt))
 
 - **Model interface** — `src/model_hooks.py`  
-  Loads CLIP ViT‑B/32, returns: weighting (pre‑norm projection norms), multi‑depth patch grids (image fidelity), pooled embeddings (joint/align). :contentReference[oaicite:14]{index=14}
+  Loads CLIP ViT‑B/32, returns: weighting (pre‑norm projection norms), multi‑depth patch grids (image fidelity), pooled embeddings (joint/align).
 
 - **Figures + metrics** — `src/plots/*.py`, orchestrated by `src/plots/make_all_figures.py`  
-  Produces F1–F4 PDFs and `metrics.csv` (slope/intercept/Spearman/boost prevalence), with optional faceting by run tag or seed. :contentReference[oaicite:15]{index=15}
+  Produces F1–F4 PDFs and `metrics.csv` (slope/intercept/Spearman/boost prevalence), with optional faceting by run tag or seed.
 
 - **Runner scripts** — `scripts/make_all.sh`, `scripts/run_full_abc3.py`  
-  One‑liner wrapper for tests → runs → figures; multi‑seed helper. Saved artifacts go under `runs/<timestamp>/`. :contentReference[oaicite:16]{index=16} :contentReference[oaicite:17]{index=17}
+  One‑liner wrapper for tests → runs → figures; multi‑seed helper. Saved artifacts go under `runs/<timestamp>/`.
 
 - **Tests** — `tests/*.py`  
-  Cover stimuli invariants and monotonicity, PSNR/identity, weighting sum‑to‑one, alignment identities, hook outputs. :contentReference[oaicite:18]{index=18} :contentReference[oaicite:19]{index=19} :contentReference[oaicite:20]{index=20} :contentReference[oaicite:21]{index=21} :contentReference[oaicite:22]{index=22} :contentReference[oaicite:23]{index=23}
+  Cover stimuli invariants and monotonicity, PSNR/identity, weighting sum‑to‑one, alignment identities, hook outputs.
 
 ---
 
