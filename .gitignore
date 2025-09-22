@@ -42,3 +42,9 @@ datasets/
 
 # --- Jupyter (if any) ---
 .ipynb_checkpoints/
+
+# Release artifacts
+results.csv.gz
+manifest.json.gz
+figures.zip
+SHA256SUMS.txt
