@@ -10,14 +10,13 @@
 #   • Reads rows where spoke == "weighting".
 #   • slope_intercept_ci and binned_mean_ci come from src/analysis. 
 # =============================================================================
-
 from __future__ import annotations
 from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ._style import apply_rc, apply_style, add_run_hash
+from ._style import apply_rc, apply_style, add_run_hash, rasterize_collections
 from ..analysis.bootstrap import binned_mean_ci
 from ..analysis.metrics   import slope_intercept_ci
 
@@ -53,8 +52,9 @@ def _draw(sub: pd.DataFrame, out_dir: Path, results_path: Path, *, ci: bool, nbi
     ax.set_title(r"Weighting calibration: $S_v$ vs $I_v$")
 
     out_path = out_dir / filename
+    rasterize_collections(fig)
     add_run_hash(fig, results_csv=str(results_path))
-    fig.savefig(out_path, dpi=200, bbox_inches="tight"); plt.close(fig)
+    fig.savefig(out_path, bbox_inches="tight", dpi=300)
     print(f"Saved {out_path}")
 
 def save_figure(results_csv: str = "results.csv", out_dir: str | None = None,

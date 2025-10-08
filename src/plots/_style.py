@@ -14,7 +14,9 @@
 
 from pathlib import Path
 import hashlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+
 
 RC = {
     "font.size":        10,
@@ -28,6 +30,10 @@ RC = {
 def apply_rc() -> None:
     for k, v in RC.items():
         plt.rcParams[k] = v
+    # Smaller, faster‑loading PDFs while keeping axes/text in vector form.
+    mpl.rcParams['pdf.compression'] = 9
+
+
 
 def apply_style(ax, *, grid: bool = True, xlim=(0, 1), ylim=(0, 1)) -> None:
     if xlim: ax.set_xlim(*xlim)
@@ -52,6 +58,18 @@ def add_run_hash(fig, *, results_csv: str = "results.csv", fontsize: int = 7) ->
         fig.text(0.99, 0.01, f"sha256:{sha}", ha="right", va="bottom", fontsize=fontsize)
     except FileNotFoundError:
         pass
+
+def rasterize_collections(fig) -> None:
+    """
+    Rasterize heavy collection artists (e.g., scatter clouds, hexbin meshes)
+    to keep PDF size small while leaving axes, labels, and lines as vectors.
+    """
+    for ax in fig.axes:
+        for coll in getattr(ax, "collections", []):
+            try:
+                coll.set_rasterized(True)
+            except Exception:
+                pass
 
 def cmap_with_nan(color: str = "#cccccc"):
     """
